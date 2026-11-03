@@ -16,14 +16,14 @@ sealed class ReminderStatus {
     data class Postponed(val until: String) : ReminderStatus()
 }
 
-// La "ficha" de cada recordatorio (inmutable, note es opcional)
+// La "ficha" de cada recordatorio (inmutable, description es opcional)
 data class Reminder(
     val id: Int,
     val title: String,
     val category: String,
     val priority: Priority,
     val status: ReminderStatus,
-    val note: String? = null
+    val description: String? = null
 )
 
 // Convierte el estado en un texto para mostrar en pantalla
@@ -33,11 +33,8 @@ fun ReminderStatus.label(): String = when (this) {
     is ReminderStatus.Postponed -> "Pospuesto hasta ${this.until}"
 }
 
-// ---------- Datos simulados ----------
-
-// Set: "Trabajo" está repetido a propósito, el Set lo ignora solo
-val categories: Set<String> =
-    listOf("Trabajo", "Casa", "Estudio", "Salud", "Trabajo").toSet()
+// Opciones de categoría definidas (el formulario solo acepta estas)
+val categoryOptions: Set<String> = setOf("Trabajo", "Casa", "Estudio", "Salud")
 
 // Map: cada categoría asociada a un color
 val categoryColors: Map<String, Color> = mapOf(
@@ -47,8 +44,8 @@ val categoryColors: Map<String, Color> = mapOf(
     "Salud" to Color(0xFF8E24AA)
 )
 
-// List: los recordatorios de ejemplo
-val sampleReminders: List<Reminder> = listOf(
+// Datos de arranque del repositorio en memoria
+val initialReminders: List<Reminder> = listOf(
     Reminder(1, "Entregar informe mensual", "Trabajo", Priority.HIGH, ReminderStatus.Pending, "Enviar por mail al jefe"),
     Reminder(2, "Reunión de equipo", "Trabajo", Priority.MEDIUM, ReminderStatus.Done),
     Reminder(3, "Comprar verduras", "Casa", Priority.LOW, ReminderStatus.Pending),
@@ -57,10 +54,3 @@ val sampleReminders: List<Reminder> = listOf(
     Reminder(6, "Turno con el dentista", "Salud", Priority.MEDIUM, ReminderStatus.Postponed("próxima semana")),
     Reminder(7, "Tomar agua", "Salud", Priority.LOW, ReminderStatus.Done)
 )
-
-// Filtros: se usan para filtrar por estado o prioridad
-val pendingReminders: List<Reminder> =
-    sampleReminders.filter { it.status is ReminderStatus.Pending }
-
-val highPriorityReminders: List<Reminder> =
-    sampleReminders.filter { it.priority == Priority.HIGH }
