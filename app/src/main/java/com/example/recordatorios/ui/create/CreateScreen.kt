@@ -32,30 +32,27 @@ import com.example.recordatorios.categoryOptions
 import com.example.recordatorios.data.AppContainer
 import com.example.recordatorios.ui.components.ChoiceChips
 import com.example.recordatorios.ui.components.ValidatedTextField
-import androidx.compose.material3.Switch
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateScreen(
     onGuardar: () -> Unit,
     onCancelar: () -> Unit,
+    reminderId: Int? = null,
     modifier: Modifier = Modifier,
-    viewModel: CreateViewModel = viewModel { CreateViewModel(AppContainer.reminderRepository) }
+    viewModel: CreateViewModel = viewModel(key = "create_$reminderId") {
+        CreateViewModel(AppContainer.reminderRepository, reminderId)
+    }
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // Cuando el guardado termina con éxito, se avisa a la pantalla anterior
     LaunchedEffect(uiState.saved) {
         if (uiState.saved) onGuardar()
     }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        topBar = { TopAppBar(title = { Text("Nuevo recordatorio") }) }
+        topBar = { TopAppBar(title = { Text(if (uiState.isEditing) "Editar recordatorio" else "Nuevo recordatorio") }) }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -78,7 +75,7 @@ fun CreateScreen(
                 onValueChange = viewModel::onDescriptionChange,
                 label = "Descripción",
                 errorMessage = if (uiState.showErrors) uiState.descriptionError else null,
-                helperText = "${uiState.description.length} / $MAX_DESCRIPTION_LENGTH caracteres",
+                helperText = "${uiState.description.length} /$MAX_DESCRIPTION_LENGTH caracteres",
                 singleLine = false,
                 minLines = 3,
                 enabled = !uiState.isSubmitting
@@ -108,28 +105,12 @@ fun CreateScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             if (uiState.generalError != null) {
-                Text(
-                    text = "Error: ${uiState.generalError}",
-                    color = MaterialTheme.colorScheme.error
-                )
+                Text(text = "Error: ${uiState.generalError}", color = MaterialTheme.colorScheme.error)
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            var simulateFailure by remember { mutableStateOf(false) }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(checked = simulateFailure, onCheckedChange = {
-                    simulateFailure = it
-                    viewModel.onSimulateSaveFailure(it)
-                })
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Simular error al guardar (solo prueba)")
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-
             Row {
-                OutlinedButton(onClick = onCancelar, enabled = !uiState.isSubmitting) {
-                    Text("Cancelar")
-                }
+                OutlinedButton(onClick = onCancelar, enabled = !uiState.isSubmitting) { Text("Cancelar") }
                 Spacer(modifier = Modifier.width(12.dp))
                 Button(onClick = viewModel::onSave, enabled = uiState.canSave) {
                     if (uiState.isSubmitting) {

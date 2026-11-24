@@ -1,22 +1,34 @@
 package com.example.recordatorios.ui.detail
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -26,16 +38,19 @@ import com.example.recordatorios.data.AppContainer
 import com.example.recordatorios.label
 import com.example.recordatorios.ui.components.ErrorState
 import com.example.recordatorios.ui.components.LoadingState
+import com.example.recordatorios.ReminderStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailScreen(
     reminderId: Int,
     onVolver: () -> Unit,
+    onEditar: (Int) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: DetailViewModel = viewModel { DetailViewModel(AppContainer.reminderRepository) }
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(reminderId) { viewModel.loadReminder(reminderId) }
 
@@ -48,25 +63,32 @@ fun DetailScreen(
                     IconButton(onClick = onVolver) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
+                },
+                actions = {
+                    if (uiState is DetailUiState.Success) {
+                        IconButton(onClick = { onEditar(reminderId) }) {
+                            Icon(Icons.Default.Edit, contentDescription = "Editar")
+                        }
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Eliminar")
+                        }
+                    }
                 }
             )
         }
     ) { innerPadding ->
         when (val state = uiState) {
             is DetailUiState.Loading -> LoadingState(modifier = Modifier.padding(innerPadding))
-
             is DetailUiState.NotFound -> ErrorState(
                 message = "No se encontró el recordatorio solicitado.",
                 onRetry = { viewModel.loadReminder(reminderId) },
                 modifier = Modifier.padding(innerPadding)
             )
-
             is DetailUiState.Error -> ErrorState(
                 message = state.message,
                 onRetry = { viewModel.loadReminder(reminderId) },
                 modifier = Modifier.padding(innerPadding)
             )
-
             is DetailUiState.Success -> {
                 val reminder = state.reminder
                 Column(modifier = Modifier.padding(innerPadding).padding(16.dp)) {
@@ -77,12 +99,29 @@ fun DetailScreen(
                     Text("Prioridad: ${reminder.priority.label}")
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Estado: ${reminder.status.label()}")
-                    if (reminder.description != null) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Descripción: ${reminder.description}")
+                    if (reminder.description != null) Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = { viewModel.toggleCompleted(reminder) }) {
+                        Text(if (reminder.status is ReminderStatus.Done) "Marcar como pendiente" else "Marcar como hecho")
                     }
                 }
             }
         }
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Eliminar recordatorio") },
+            text = { Text("¿Seguro que querés eliminarlo? Esta acción no se puede deshacer.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteDialog = false
+                    viewModel.deleteReminder(reminderId, onDeleted = onVolver)
+                }) { Text("Eliminar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancelar") }
+            }
+        )
     }
 }
